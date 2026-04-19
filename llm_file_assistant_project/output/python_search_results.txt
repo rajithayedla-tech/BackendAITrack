@@ -1,0 +1,6 @@
+java-developer-resume-example.pdf: {'matches': [], 'count': 0}
+ProgramManagerResume.docx: {'matches': [], 'count': 0}
+python-developer-resume.pdf: {'matches': ['Python Developersupport@qwikresume.com', 'Enthusiastic Python Developer with 5 years of experience in', 'Proficient in leveraging advanced Python libraries and frameworks to', '\uf08dPython Developer', '1.Developed and maintained web applications using Python 3, HTML5,', '\uf08dPython Developer', '1.Developed Python scripts for data parsing and integration into', 'extensive coursework in Python programming and web development.'], 'count': 8}
+python-developer-standout-resume-example.pdf: {'matches': ['Python Developer', 'Python Developer', 'Python Developer Intern', 'Python (Django)'], 'count': 4}
+SAP_Profile.docx: {'matches': [], 'count': 0}
+~$P_Profile.docx: {'error': "Package not found at 'resumes\\~$P_Profile.docx'"}
