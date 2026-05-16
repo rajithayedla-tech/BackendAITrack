@@ -1,119 +1,127 @@
 # matching_agent.py
-# LangGraph-based agent for candidate-job matching
 
-from typing import TypedDict, List, Dict, Any
-from langgraph.graph import StateGraph, START, END
+from typing import Dict, List, Any
 
-# -----------------------------
-# Agent State Definition
-# -----------------------------
-class AgentState(TypedDict):
-    conversation: List[Dict[str, Any]]
-    job_requirements: Dict[str, List[str]]
-    candidates: List[Dict[str, Any]]
-    report: str
+AgentState = Dict[str, Any]
 
-
-# -----------------------------
-# Tool Stubs
-# -----------------------------
-def extract_requirements(jd: str) -> Dict[str, List[str]]:
-    """Parse JD into must-have and nice-to-have requirements."""
-    # TODO: Implement NLP parsing logic
-    return {"must_have": ["Python", "React"], "nice_to_have": ["AWS", "Docker"]}
-
-
-def compare_candidates(candidate_ids: List[str]) -> str:
-    """Compare candidates head-to-head."""
-    # TODO: Implement comparison logic
-    return f"Comparison report for {candidate_ids}"
-
-
-def generate_interview_questions(candidate_id: str) -> List[str]:
-    """Generate screening questions for a candidate."""
-    # TODO: Implement question generation
-    return [f"Tell me about your experience with React, Candidate {candidate_id}."]
-
-
-# -----------------------------
-# Workflow Node Functions
-# -----------------------------
-def parse_jd(state: AgentState) -> dict:
-    jd_text = state["conversation"][-1]["content"]
-    job_requirements = extract_requirements(jd_text)
-    return {"job_requirements": job_requirements}
-
-
-def search_resumes(state: AgentState) -> dict:
-    candidates = [
-        {"id": "C1", "score": 0.85, "reason": "Strong React + 3 years exp"},
-        {"id": "C2", "score": 0.78, "reason": "Good Python, less React"}
-    ]
-    return {"candidates": candidates}
-
-
-def rank_candidates(state: AgentState) -> dict:
-    ranked = sorted(state["candidates"], key=lambda x: x["score"], reverse=True)
-    return {"candidates": ranked}
-
-
-def generate_report(state: AgentState) -> dict:
-    report_lines = [
-        f"Candidate {c['id']} - Score: {c['score']} - Reason: {c['reason']}"
-        for c in state["candidates"]
-    ]
-    return {"report": "\n".join(report_lines)}
-
-
-def human_feedback(state: AgentState) -> dict:
-    # For now, no changes
-    return {}
-
-
-# -----------------------------
-# Graph Construction
-# -----------------------------
+# --- Build Graph (stub for LangGraph integration) ---
 def build_graph():
-    graph = StateGraph(AgentState)
+    class DummyGraph:
+        def invoke(self, state: AgentState) -> AgentState:
+            jd_text = state["conversation"][-1]["content"]
+            state["job_requirements"] = extract_requirements(jd_text)
 
-    graph.add_node("parse_jd", parse_jd)
-    graph.add_node("search_resumes", search_resumes)
-    graph.add_node("rank_candidates", rank_candidates)
-    graph.add_node("generate_report", generate_report)
-    graph.add_node("human_feedback", human_feedback)
+            # Example candidate pool (normally from DB or resumes)
+            candidate_pool = [
+                {"id": "C1", "skills": ["React", "Python"], "experience": 3},
+                {"id": "C2", "skills": ["React"], "experience": 2},
+                {"id": "C3", "skills": ["Python", "AWS"], "experience": 1},
+            ]
 
-    # Entry point
-    graph.add_edge(START, "parse_jd")
+            # Score candidates dynamically
+            scored = []
+            for c in candidate_pool:
+                score, reason, suggestion = score_candidate(c, state["job_requirements"])
+                c["score"] = score
+                c["reason"] = reason
+                c["suggestion"] = suggestion
+                scored.append(c)
 
-    graph.add_edge("parse_jd", "search_resumes")
-    graph.add_edge("search_resumes", "rank_candidates")
-    graph.add_edge("rank_candidates", "generate_report")
-    graph.add_edge("generate_report", "human_feedback")
-    graph.add_edge("human_feedback", END)
+            # Sort by score
+            state["candidates"] = sorted(scored, key=lambda x: x["score"], reverse=True)
+            state["report"] = f"Parsed JD: {state['job_requirements']}\nTop candidates ranked."
+            return state
+    return DummyGraph()
 
-    return graph.compile()
+# --- Requirement Extraction ---
+def extract_requirements(jd: str) -> Dict[str, List[str]]:
+    must_have = []
+    nice_to_have = []
+    jd_lower = jd.lower()
+    if "react" in jd_lower:
+        must_have.append("React")
+    if "docker" in jd_lower:
+        must_have.append("Docker")
+    if "aws" in jd_lower:
+        nice_to_have.append("AWS")
+    if "python" in jd_lower:
+        must_have.append("Python")
+    return {"must_have": must_have, "nice_to_have": nice_to_have}
 
+# --- Candidate Scoring Function with Suggestions ---
+def score_candidate(candidate: Dict[str, Any], requirements: Dict[str, List[str]]) -> (float, str, str):
+    score = 0.0
+    reasons = []
+    suggestion = "Candidate meets most requirements."
 
-# -----------------------------
-# CLI Chat Interface
-# -----------------------------
-def run_cli():
-    state: AgentState = {
-        "conversation": [],
-        "job_requirements": {},
-        "candidates": [],
-        "report": ""
-    }
-    graph = build_graph()
+    # Must-have skills
+    for skill in requirements["must_have"]:
+        if skill in candidate["skills"]:
+            score += 0.4
+            reasons.append(f"Has must-have skill: {skill}")
+        else:
+            reasons.append(f"Missing must-have skill: {skill}")
+            suggestion = f"Should learn {skill} to strengthen profile."
 
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() in ["exit", "quit"]:
-            break
-        state["conversation"].append({"role": "user", "content": user_input})
-        state = graph.invoke(state)
-        print("Agent Report:\n", state["report"])
+    # Nice-to-have skills
+    for skill in requirements["nice_to_have"]:
+        if skill in candidate["skills"]:
+            score += 0.2
+            reasons.append(f"Has nice-to-have skill: {skill}")
+        else:
+            suggestion = f"Consider gaining {skill} experience."
 
+    # Experience weighting
+    if candidate.get("experience", 0) >= 3:
+        score += 0.2
+        reasons.append("Has 3+ years experience")
+    elif candidate.get("experience", 0) >= 2:
+        score += 0.1
+        reasons.append("Has 2 years experience")
+        suggestion = "Could improve by taking on more complex projects."
+    else:
+        reasons.append("Limited experience")
+        suggestion = "Needs more hands-on project work to build experience."
 
-if __name__ == "__main__":
-    run_cli()
+    return min(score, 1.0), "; ".join(reasons), suggestion
+
+# --- Candidate Comparison ---
+def compare_candidates(candidate_ids: List[str]) -> str:
+    comparison_report = []
+    for cid in candidate_ids:
+        if cid == "C1":
+            comparison_report.append("C1: Strong React + Python, 3 years exp. Suggestion: Ready for hire.")
+        elif cid == "C2":
+            comparison_report.append("C2: Solid React, 2 years exp. Suggestion: Learn Docker to improve profile.")
+        elif cid == "C3":
+            comparison_report.append("C3: Python + AWS, only 1 year exp. Suggestion: Gain more React experience.")
+        else:
+            comparison_report.append(f"{cid}: No detailed profile available.")
+    return "\n".join(comparison_report)
+
+# --- Interview Question Generation ---
+def generate_interview_questions(candidate_id: str) -> List[str]:
+    if candidate_id == "C1":
+        return [
+            "Describe a complex React project you worked on.",
+            "How do you optimize React components for performance?",
+            "What’s your experience with Python in backend systems?",
+        ]
+    elif candidate_id == "C2":
+        return [
+            "How have you applied React in production projects?",
+            "What strategies do you use for debugging React applications?",
+            "How would you approach learning Docker quickly?",
+        ]
+    elif candidate_id == "C3":
+        return [
+            "Tell me about your exposure to Python and AWS.",
+            "How do you handle limited experience when tackling new challenges?",
+            "What motivates you to improve your technical skills?",
+        ]
+    else:
+        return [
+            "Tell me about your technical background.",
+            "What motivates you to learn new skills?",
+            "How do you approach problem-solving in projects?",
+        ]
