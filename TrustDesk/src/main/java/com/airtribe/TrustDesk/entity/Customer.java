@@ -2,6 +2,7 @@ package com.airtribe.TrustDesk.entity;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -23,7 +24,7 @@ public class Customer {
     private String country;
 
     @Column(name = "created_at")
-    private String createdAt;
+    private LocalDate createdAt;
 
     private boolean verified;
 
@@ -78,11 +79,11 @@ public class Customer {
         this.country = country;
     }
 
-    public String getCreatedAt() {
+    public LocalDate getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(LocalDate createdAt) {
         this.createdAt = createdAt;
     }
 

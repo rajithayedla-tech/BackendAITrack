@@ -2,6 +2,7 @@ package com.airtribe.TrustDesk.entity;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -18,13 +19,13 @@ public class Order {
     private String status;
 
     @Column(name = "placed_at")
-    private String placedAt;
+    private LocalDate placedAt;
 
     @Column(name = "delivered_at")
-    private String deliveredAt;
+    private LocalDate deliveredAt;
 
     @Column(name = "eligible_return_until")
-    private String eligibleReturnUntil;
+    private LocalDate eligibleReturnUntil;
 
     private double total;
 
@@ -70,27 +71,27 @@ public class Order {
         this.status = status;
     }
 
-    public String getPlacedAt() {
+    public LocalDate getPlacedAt() {
         return placedAt;
     }
 
-    public void setPlacedAt(String placedAt) {
+    public void setPlacedAt(LocalDate placedAt) {
         this.placedAt = placedAt;
     }
 
-    public String getDeliveredAt() {
+    public LocalDate getDeliveredAt() {
         return deliveredAt;
     }
 
-    public void setDeliveredAt(String deliveredAt) {
+    public void setDeliveredAt(LocalDate deliveredAt) {
         this.deliveredAt = deliveredAt;
     }
 
-    public String getEligibleReturnUntil() {
+    public LocalDate getEligibleReturnUntil() {
         return eligibleReturnUntil;
     }
 
-    public void setEligibleReturnUntil(String eligibleReturnUntil) {
+    public void setEligibleReturnUntil(LocalDate eligibleReturnUntil) {
         this.eligibleReturnUntil = eligibleReturnUntil;
     }
 

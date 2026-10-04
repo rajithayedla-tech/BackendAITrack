@@ -2,6 +2,7 @@ package com.airtribe.TrustDesk.entity;
 
 import jakarta.persistence.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -26,7 +27,7 @@ public class Ticket {
     private String body;
 
     @Column(name = "created_at")
-    private String createdAt;
+    private OffsetDateTime createdAt;
 
     private String status;
 
@@ -101,11 +102,11 @@ public class Ticket {
         this.body = body;
     }
 
-    public String getCreatedAt() {
+    public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(String createdAt) {
+    public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
