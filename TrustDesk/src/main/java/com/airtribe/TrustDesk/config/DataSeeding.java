@@ -1,11 +1,15 @@
 package com.airtribe.TrustDesk.config;
 
 import com.airtribe.TrustDesk.entity.Customer;
+import com.airtribe.TrustDesk.entity.EvalCase;
+import com.airtribe.TrustDesk.entity.KnowledgeDocument;
 import com.airtribe.TrustDesk.entity.Order;
 import com.airtribe.TrustDesk.entity.Ticket;
 import com.airtribe.TrustDesk.entity.ToolAction;
 
 import com.airtribe.TrustDesk.repository.CustomerRepository;
+import com.airtribe.TrustDesk.repository.EvalCaseRepository;
+import com.airtribe.TrustDesk.repository.KnowledgeDocumentRepository;
 import com.airtribe.TrustDesk.repository.OrderRepository;
 import com.airtribe.TrustDesk.repository.TicketRepository;
 import com.airtribe.TrustDesk.repository.ToolActionRepository;
@@ -17,7 +21,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Component
 public class DataSeeding implements CommandLineRunner {
@@ -26,6 +34,8 @@ public class DataSeeding implements CommandLineRunner {
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
     private final ToolActionRepository toolActionRepository;
+    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final EvalCaseRepository evalCaseRepository;
     private final ObjectMapper objectMapper;
 
     public DataSeeding(
@@ -33,12 +43,16 @@ public class DataSeeding implements CommandLineRunner {
             OrderRepository orderRepository,
             TicketRepository ticketRepository,
             ToolActionRepository toolActionRepository,
+            KnowledgeDocumentRepository knowledgeDocumentRepository,
+            EvalCaseRepository evalCaseRepository,
             ObjectMapper objectMapper
     ) {
         this.customerRepository = customerRepository;
         this.orderRepository = orderRepository;
         this.ticketRepository = ticketRepository;
         this.toolActionRepository = toolActionRepository;
+        this.knowledgeDocumentRepository = knowledgeDocumentRepository;
+        this.evalCaseRepository = evalCaseRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -53,6 +67,8 @@ public class DataSeeding implements CommandLineRunner {
         seedOrders();
         seedTickets();
         seedToolActions();
+        seedKnowledgeDocuments();
+        seedEvalCases();
 
         System.out.println("========================================");
         System.out.println("TrustDesk data seeding completed.");
@@ -129,6 +145,145 @@ public class DataSeeding implements CommandLineRunner {
         );
     }
 
+    private void seedKnowledgeDocuments() throws Exception {
+
+        if (knowledgeDocumentRepository.count() > 0) {
+            System.out.println("Knowledge documents already exist. Skipping.");
+            return;
+        }
+
+        Path directory = Paths.get("data/knowledge_base");
+
+        if (!Files.exists(directory)) {
+            throw new IllegalArgumentException(
+                    "Knowledge base directory not found: "
+                            + directory.toAbsolutePath()
+            );
+        }
+
+        try (Stream<Path> files = Files.list(directory)) {
+
+            List<Path> markdownFiles = files
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".md"))
+                    .sorted()
+                    .toList();
+
+            for (Path path : markdownFiles) {
+
+                KnowledgeDocument document =
+                        parseKnowledgeDocument(path);
+
+                knowledgeDocumentRepository.save(document);
+
+                System.out.println(
+                        "Seeded knowledge document: "
+                                + document.getDocumentId()
+                );
+            }
+
+            System.out.println(
+                    "Seeded " + markdownFiles.size()
+                            + " knowledge documents."
+            );
+        }
+    }
+
+    private KnowledgeDocument parseKnowledgeDocument(
+            Path path
+    ) throws Exception {
+
+        String content = Files.readString(path);
+
+        String title = extractTitle(content);
+        String documentId = extractMetadata(content, "Doc ID");
+        String audience = extractMetadata(content, "Audience");
+        String version = extractMetadata(content, "Version");
+
+        if (documentId == null || documentId.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Missing 'Doc ID' in: "
+                            + path.toAbsolutePath()
+            );
+        }
+
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Missing Markdown title in: "
+                            + path.toAbsolutePath()
+            );
+        }
+
+        KnowledgeDocument document = new KnowledgeDocument();
+
+        document.setDocumentId(documentId);
+        document.setFilename(path.getFileName().toString());
+        document.setTitle(title);
+        document.setAudience(audience);
+        document.setVersion(version);
+        document.setContent(content);
+
+        return document;
+    }
+
+    private String extractTitle(String content) {
+
+        String[] lines = content.split("\\R");
+
+        for (String line : lines) {
+
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith("# ")) {
+                return trimmed.substring(2).trim();
+            }
+        }
+
+        return null;
+    }
+
+    private String extractMetadata(
+            String content,
+            String field
+    ) {
+
+        String[] lines = content.split("\\R");
+
+        String prefix = field + ":";
+
+        for (String line : lines) {
+
+            String trimmed = line.trim();
+
+            if (trimmed.startsWith(prefix)) {
+                return trimmed
+                        .substring(prefix.length())
+                        .trim();
+            }
+        }
+
+        return null;
+    }
+
+    private void seedEvalCases() throws Exception {
+
+        if (evalCaseRepository.count() > 0) {
+            System.out.println("Eval cases already exist. Skipping.");
+            return;
+        }
+
+        List<EvalCase> evalCases = readJson(
+                "data/eval_cases.json",
+                new TypeReference<List<EvalCase>>() {}
+        );
+
+        evalCaseRepository.saveAll(evalCases);
+
+        System.out.println(
+                "Seeded " + evalCases.size() + " eval cases."
+        );
+    }
+
     private <T> List<T> readJson(
             String filePath,
             TypeReference<List<T>> typeReference
@@ -138,14 +293,19 @@ public class DataSeeding implements CommandLineRunner {
 
         if (!file.exists()) {
             throw new IllegalArgumentException(
-                    "JSON file not found: " + file.getAbsolutePath()
+                    "JSON file not found: "
+                            + file.getAbsolutePath()
             );
         }
 
         System.out.println(
-                "Reading JSON file: " + file.getAbsolutePath()
+                "Reading JSON file: "
+                        + file.getAbsolutePath()
         );
 
-        return objectMapper.readValue(file, typeReference);
+        return objectMapper.readValue(
+                file,
+                typeReference
+        );
     }
 }
